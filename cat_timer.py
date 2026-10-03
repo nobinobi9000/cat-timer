@@ -100,19 +100,26 @@ class CatTimer:
     # 4×4グリッドを 16分割してセルリストに積む
     # ------------------------------------------------------------------
     def _load_grids(self):
-        p = _img_path("16.png")
-        if not os.path.exists(p):
-            return
-        try:
-            img = Image.open(p).convert("RGBA")
-            w, h = img.size
-            cw, ch = w // 4, h // 4
-            for row in range(4):
-                for col in range(4):
-                    x0, y0 = col * cw, row * ch
-                    self._random_cells.append(img.crop((x0, y0, x0 + cw, y0 + ch)))
-        except Exception as e:
-            print(f"[warn] 16.png: {e}")
+        grid_files = [
+            "16.png",
+            "grid_ojisan2.png",
+            "grid_wakamono.png",
+            "grid_onnano.png",
+        ]
+        for fname in grid_files:
+            p = _img_path(fname)
+            if not os.path.exists(p):
+                continue
+            try:
+                img = Image.open(p).convert("RGBA")
+                w, h = img.size
+                cw, ch = w // 4, h // 4
+                for row in range(4):
+                    for col in range(4):
+                        x0, y0 = col * cw, row * ch
+                        self._random_cells.append(img.crop((x0, y0, x0 + cw, y0 + ch)))
+            except Exception as e:
+                print(f"[warn] {fname}: {e}")
 
     # ------------------------------------------------------------------
     # 汎用
@@ -219,7 +226,7 @@ class CatTimer:
     def _show_settings(self):
         MciPlayer.stop()
         self._clear()
-        self.root.geometry("500x440")
+        self.root.geometry("500x600")
 
         tk.Label(self.root, text="⚙ 設定",
                  font=("Yu Gothic UI", 18, "bold"),
@@ -247,8 +254,35 @@ class CatTimer:
                       cursor="hand2",
                       command=lambda num=n: MciPlayer.play(_snd_path(num))).pack(side="left", padx=14)
 
-        # ── ねこおじさんの詳細設定 ──────────────────
+        # ── キャラクター設定シート ───────────────────
         tk.Frame(self.root, bg=self.BTN_DK, height=1).pack(fill="x", padx=20, pady=(14, 10))
+
+        tk.Label(self.root, text="キャラクター設定シート",
+                 font=("Yu Gothic UI", 13),
+                 bg=self.BG, fg=self.WHITE).pack(anchor="w", padx=80, pady=(0, 4))
+
+        char_sheets = [
+            ("おじさん猫", "char_ojisan.png"),
+            ("わかいねこ",  "char_wakamono.png"),
+            ("おんなのこねこ", "char_onnano.png"),
+        ]
+        for label, fname in char_sheets:
+            if not os.path.exists(_img_path(fname)):
+                continue
+            r = tk.Frame(self.root, bg=self.BG)
+            r.pack(anchor="w", padx=80, pady=2)
+            tk.Label(r, text=label,
+                     font=("Yu Gothic UI", 13),
+                     bg=self.BG, fg=self.WHITE, width=12, anchor="w").pack(side="left")
+            tk.Button(r, text="表示する",
+                      font=("Yu Gothic UI", 11),
+                      bg=self.BTN_DK, fg=self.ACCENT,
+                      bd=0, relief="flat", padx=14, pady=4,
+                      cursor="hand2",
+                      command=lambda f=fname: self._show_char_popup(f)).pack(side="left", padx=14)
+
+        # ── ねこおじさんの詳細設定 ──────────────────
+        tk.Frame(self.root, bg=self.BTN_DK, height=1).pack(fill="x", padx=20, pady=(12, 10))
 
         row16a = tk.Frame(self.root, bg=self.BG)
         row16a.pack(anchor="w", padx=80, pady=4)
@@ -268,7 +302,7 @@ class CatTimer:
                   bg=self.BTN_DK, fg=self.GRAY,
                   bd=0, relief="flat", padx=20, pady=8,
                   cursor="hand2",
-                  command=lambda: [MciPlayer.stop(), self._show_start()]).pack(pady=16)
+                  command=lambda: [MciPlayer.stop(), self._show_start()]).pack(pady=14)
 
     def _show_16a_popup(self):
         popup = tk.Toplevel(self.root)
@@ -299,6 +333,36 @@ class CatTimer:
                  font=("Yu Gothic UI", 9), bg=self.BG, fg=self.GRAY).pack(pady=4)
 
         # 画面中央に配置
+        popup.update_idletasks()
+        x = (popup.winfo_screenwidth()  - popup.winfo_width())  // 2
+        y = (popup.winfo_screenheight() - popup.winfo_height()) // 2
+        popup.geometry(f"+{x}+{y}")
+
+    def _show_char_popup(self, fname: str):
+        popup = tk.Toplevel(self.root)
+        popup.title("キャラクター設定")
+        popup.configure(bg=self.BG)
+        popup.resizable(False, False)
+        popup.attributes("-topmost", True)
+
+        try:
+            img = Image.open(_img_path(fname)).convert("RGBA")
+            sw = popup.winfo_screenwidth()
+            sh = popup.winfo_screenheight()
+            img.thumbnail((int(sw * 0.85), int(sh * 0.85)), Image.LANCZOS)
+            photo = ImageTk.PhotoImage(img)
+            self._tk_images[f"popup_{fname}"] = photo
+            lbl = tk.Label(popup, image=photo, bg=self.BG, cursor="hand2")
+            lbl.pack()
+            lbl.bind("<Button-1>", lambda e: popup.destroy())
+        except Exception as ex:
+            tk.Label(popup, text=f"読み込みエラー: {ex}",
+                     bg=self.BG, fg=self.WHITE,
+                     font=("Yu Gothic UI", 12)).pack(padx=20, pady=20)
+
+        tk.Label(popup, text="クリックで閉じる",
+                 font=("Yu Gothic UI", 9), bg=self.BG, fg=self.GRAY).pack(pady=4)
+
         popup.update_idletasks()
         x = (popup.winfo_screenwidth()  - popup.winfo_width())  // 2
         y = (popup.winfo_screenheight() - popup.winfo_height()) // 2
